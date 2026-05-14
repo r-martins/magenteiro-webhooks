@@ -1,0 +1,6 @@
+.idea
+.vscode
+.cursor
+.DS_STORE
+logs/*
+mautic-config.php

@@ -1,0 +1,6 @@
+compress
+
+/home/aprendamagento/webhooks/logs {
+	rotate 5
+	daily
+}
