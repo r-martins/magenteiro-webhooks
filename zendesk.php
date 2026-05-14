@@ -20,8 +20,26 @@ $auth = $initAuth->newAuth($settings, 'BasicAuth');
 $api = new MauticApi();
 $contactsApi = $api->newApi('contacts', $auth, $apiUrl);
 $raw_post = file_get_contents('php://input');
-$customer = json_decode($raw_post);
-$customer = (array)$customer;
+if (!is_string($raw_post)) {
+    $raw_post = '';
+}
+$raw_post = trim($raw_post);
+if (strncmp($raw_post, "\xEF\xBB\xBF", 3) === 0) {
+    $raw_post = substr($raw_post, 3);
+}
+$parsed = json_decode($raw_post, true);
+$customer = (is_array($parsed) && json_last_error() === JSON_ERROR_NONE) ? $parsed : array();
+$postFields = array_intersect_key($_POST, array_flip(array('firstname', 'lastname', 'email')));
+$customer = array_merge($postFields, $customer);
+$normalized = array();
+foreach ($customer as $key => $value) {
+    if (is_string($key)) {
+        $normalized[strtolower($key)] = $value;
+    } else {
+        $normalized[$key] = $value;
+    }
+}
+$customer = $normalized;
 
 $firstname = null;
 if (isset($customer['firstname']) && $customer['firstname'] !== '' && $customer['firstname'] !== null) {
@@ -43,11 +61,24 @@ if (isset($customer['lastname']) && $customer['lastname'] !== '' && $customer['l
         $lastname = mb_strtoupper(mb_substr($l, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($l, 1, null, 'UTF-8');
     }
 }
-$email = isset($customer['email']) && !empty($customer['email']) ? $customer['email'] : null;
+$email = null;
+if (isset($customer['email'])) {
+    $e = trim(is_string($customer['email']) ? $customer['email'] : (string) $customer['email']);
+    if ($e !== '') {
+        $email = $e;
+    }
+}
 $mauticCustomerId = 0;
 
 if (empty($email)) {
-    file_put_contents($logFile, date('d/m/Y H:i:s') . ' - Email is empty.' . PHP_EOL, FILE_APPEND);
+    file_put_contents(
+        $logFile,
+        date('d/m/Y H:i:s')
+        . ' - Email is empty. json_error=' . json_last_error_msg()
+        . ' body_len=' . strlen($raw_post)
+        . PHP_EOL,
+        FILE_APPEND
+    );
     header('Email is empty.', true, 503);
     exit;
 }
