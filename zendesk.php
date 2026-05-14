@@ -45,7 +45,7 @@ if ($raw_post === '') {
     $parsed = json_decode($raw_post, true);
     $customer = (is_array($parsed) && json_last_error() === JSON_ERROR_NONE) ? $parsed : array();
 }
-$postFields = array_intersect_key($_POST, array_flip(array('firstname', 'lastname', 'email')));
+$postFields = array_intersect_key($_POST, array_flip(array('firstname', 'lastname', 'email', 'platform')));
 $customer = array_merge($postFields, $customer);
 $normalized = array();
 foreach ($customer as $key => $value) {
@@ -72,6 +72,13 @@ if (isset($customer['email'])) {
     $e = trim(is_string($customer['email']) ? $customer['email'] : (string) $customer['email']);
     if ($e !== '') {
         $email = $e;
+    }
+}
+$platformPagbank = null;
+if (isset($customer['platform'])) {
+    $p = trim(is_string($customer['platform']) ? $customer['platform'] : (string) $customer['platform']);
+    if ($p !== '') {
+        $platformPagbank = $p;
     }
 }
 $mauticCustomerId = 0;
@@ -120,6 +127,9 @@ $parameters = array(
     'email'     => $email,
     'tags'      => array_merge(array('zendesk-ticket'), $currentTags),
 );
+if ($platformPagbank !== null) {
+    $parameters['platform_pagbank'] = $platformPagbank;
+}
 
 $result = $contactsApi->edit($mauticCustomerId, $parameters, true);
 
